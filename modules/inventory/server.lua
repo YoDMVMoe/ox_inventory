@@ -723,8 +723,11 @@ function Inventory.Save(inv)
     local data = next(buffer) and json.encode(buffer) or nil
     inv.changed = false
 
-    if inv.player then
-        return shared.framework ~= 'esx' and db.savePlayer(inv.owner, data)
+    if inv.type == 'player' then
+        return db.savePlayer(
+            inv.owner,
+            data
+        )
     elseif inv.type == 'trunk' then
         return db.saveTrunk(inv.dbId, data)
     elseif inv.type == 'glovebox' then
@@ -2370,9 +2373,10 @@ local function prepareInventorySave(inv, buffer, time)
     table.wipe(buffer)
 
     if inv.player then
-        if shared.framework == 'esx' then return end
-
-        return 1, { data, inv.owner }
+        return 1, {
+            data,
+            inv.owner,
+        }
     end
 
     if inv.type == 'trunk' then

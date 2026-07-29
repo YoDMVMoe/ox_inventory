@@ -305,17 +305,42 @@ local function openEvidence()
     client.openInventory('policeevidence')
 end
 
+-- GTA exposes GetControlInstructionalButton, but RedM does not.
+-- Evidence and static stash prompts are disabled for the VORP bootstrap,
+-- so E is only a safe display fallback for this module.
+local interactionKey = 'E'
+
+if shared.framework ~= 'vorp' then
+    local instructionalButton =
+        GetControlInstructionalButton(0, 38, true)
+
+    if instructionalButton then
+        interactionKey = instructionalButton:sub(3)
+    end
+end
+
 local textPrompts = {
     evidence = {
-        options = { icon = 'fa-box-archive' },
-        message = ('**%s**  \n%s'):format(locale('open_police_evidence'),
-            locale('interact_prompt', GetControlInstructionalButton(0, 38, true):sub(3)))
+        options = {
+            icon = 'fa-box-archive',
+        },
+
+        message = ('**%s**  \n%s'):format(
+            locale('open_police_evidence'),
+            locale('interact_prompt', interactionKey)
+        ),
     },
+
     stash = {
-        options = { icon = 'fa-warehouse' },
-        message = ('**%s**  \n%s'):format(locale('open_stash'),
-            locale('interact_prompt', GetControlInstructionalButton(0, 38, true):sub(3)))
-    }
+        options = {
+            icon = 'fa-warehouse',
+        },
+
+        message = ('**%s**  \n%s'):format(
+            locale('open_stash'),
+            locale('interact_prompt', interactionKey)
+        ),
+    },
 }
 
 Inventory.Evidence = setmetatable(lib.load('data.evidence'), {

@@ -1,71 +1,74 @@
----@todo separate module into smaller submodules to handle each framework
----starting to get bulky
-
----Checks whether the inventory player has a required group and rank
----@param inv table
----@param group string | table<string, number | number[]>
----@return string? groupName
----@return number? groupRank
-function server.hasGroup(inv, group)
-	if type(group) == 'table' then
-		for name, requiredRank in pairs(group) do
-			local groupRank = inv.player.groups[name]
-			if groupRank then
-				if type(requiredRank) == 'table' then
-					if lib.table.contains(requiredRank, groupRank) then
-						return name, groupRank
-					end
-				else
-					if groupRank >= (requiredRank or 0) then
-						return name, groupRank
-					end
-				end
-			end
-		end
-	else
-		local groupRank = inv.player.groups[group]
-		if groupRank then
-			return group, groupRank
-		end
-	end
+if not lib then
+    return
 end
 
----@diagnostic disable-next-line: duplicate-set-field
+---@param inventory table
+---@param requiredGroup string | table<string, number | number[]>
+---@return string?
+---@return number?
+function server.hasGroup(inventory, requiredGroup)
+    local player = inventory and inventory.player
+
+    if not player then
+        return
+    end
+
+    local playerGroups = player.groups or {}
+
+    if type(requiredGroup) == 'table' then
+        for groupName, requiredGrade in pairs(requiredGroup) do
+            local playerGrade = playerGroups[groupName]
+
+            if playerGrade ~= nil then
+                if type(requiredGrade) == 'table' then
+                    if lib.table.contains(
+                        requiredGrade,
+                        playerGrade
+                    ) then
+                        return groupName, playerGrade
+                    end
+                elseif playerGrade >= (requiredGrade or 0) then
+                    return groupName, playerGrade
+                end
+            end
+        end
+
+        return
+    end
+
+    local playerGrade = playerGroups[requiredGroup]
+
+    if playerGrade ~= nil then
+        return requiredGroup, playerGrade
+    end
+end
+
+---@param player table
+---@return table
 function server.setPlayerData(player)
-	if not player.groups then
-		warn(("server.setPlayerData did not receive any groups for '%s'"):format(player?.name or GetPlayerName(player)))
-	end
-
-	return {
-		source = player.source,
-		name = player.name,
-		groups = player.groups or {},
-		sex = player.sex,
-		dateofbirth = player.dateofbirth,
-	}
-end
-
----@diagnostic disable-next-line: duplicate-set-field
-function server.buyLicense()
-	warn('Licenses are not supported for the current framework.')
+    return {
+        source = player.source,
+        name = player.name,
+        groups = player.groups or {},
+        sex = player.sex,
+        dateofbirth = player.dateofbirth,
+        maxWeight = player.maxWeight,
+        slots = player.slots,
+    }
 end
 
 local Inventory = require 'modules.inventory.server'
 
-function server.playerDropped(source)
-	local inv = Inventory(source) --[[@as OxInventory]]
+---@param playerSource number
+function server.playerDropped(playerSource)
+    local inventory = Inventory(playerSource)
 
-	if inv?.player then
-		inv:closeInventory()
-		Inventory.Remove(inv)
-	end
+    if not inventory or not inventory.player then
+        return
+    end
+
+    inventory:closeInventory()
+    Inventory.Remove(inventory)
 end
 
-local success, result = pcall(lib.load, ('modules.bridge.%s.server'):format(shared.framework))
-
-if not success then
-    lib = nil
-    error(result, 0)
-end
-
-if server.convertInventory then exports('ConvertItems', server.convertInventory) end
+require 'modules.bridge.vorp.server'

@@ -49,83 +49,25 @@ exports('ItemList', function(item) return getItem(nil, item) end)
 local Inventory
 
 CreateThread(function()
-	Inventory = require 'modules.inventory.server'
+    Inventory = require 'modules.inventory.server'
 
     if not lib then return end
 
-	if shared.framework == 'esx' then
-		local success, items = pcall(MySQL.query.await, 'SELECT * FROM items')
+    Wait(1000)
 
-		if success and items and next(items) then
-			local dump = {}
-			local count = 0
+    local count = 0
 
-			for i = 1, #items do
-				local item = items[i]
+    for _ in pairs(ItemList) do
+        count += 1
+    end
 
-				if not ItemList[item.name] then
-					item.close = item.closeonuse == nil and true or item.closeonuse
-					item.stack = item.stackable == nil and true or item.stackable
-					item.description = item.description
-					item.weight = item.weight or 0
-					dump[i] = item
-					count += 1
-				end
-			end
+    shared.info(
+        ('Inventory has loaded %d items from data/items.lua and data/weapons.lua')
+            :format(count)
+    )
 
-			if table.type(dump) ~= "empty" then
-				local file = {string.strtrim(LoadResourceFile(shared.resource, 'data/items.lua'))}
-				file[1] = file[1]:gsub('}$', '')
-
-				---@todo separate into functions for reusability, properly handle nil values
-				local itemFormat = [[
-
-	[%q] = {
-		label = %q,
-		weight = %s,
-		stack = %s,
-		close = %s,
-		description = %q
-	},
-]]
-				local fileSize = #file
-
-				for _, item in pairs(dump) do
-					if not ItemList[item.name] then
-						fileSize += 1
-
-						local itemStr = itemFormat:format(item.name, item.label, item.weight, item.stack, item.close, item.description and json.encode(item.description) or 'nil')
-						-- temporary solution for nil values
-						itemStr = itemStr:gsub('[%s]-[%w]+ = "?nil"?,?', '')
-						file[fileSize] = itemStr
-						ItemList[item.name] = item
-					end
-				end
-
-				file[fileSize+1] = '}'
-
-				SaveResourceFile(shared.resource, 'data/items.lua', table.concat(file), -1)
-				shared.info(count, 'items have been copied from the database.')
-				shared.info('You should restart the resource to load the new items.')
-			end
-
-			shared.info('Database contains', #items, 'items.')
-		end
-
-		Wait(500)
-	end
-
-	local count = 0
-
-	Wait(1000)
-
-	for _ in pairs(ItemList) do
-		count += 1
-	end
-
-	shared.info(('Inventory has loaded %d items'):format(count))
-	collectgarbage('collect') -- clean up from initialisation
-	shared.ready = true
+    collectgarbage('collect')
+    shared.ready = true
 end)
 
 local function GenerateText(num)
@@ -175,7 +117,7 @@ function Items.Metadata(inv, item, metadata, count)
 
 	if item.weapon then
 		if type(metadata) ~= 'table' then metadata = {} end
-		if not metadata.durability then 
+		if not metadata.durability then
 			metadata = setItemDurability(item, metadata)
 		end
 		if not metadata.ammo and item.ammoname then metadata.ammo = 0 end
